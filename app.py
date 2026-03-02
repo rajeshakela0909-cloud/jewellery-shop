@@ -4,18 +4,21 @@ import sqlite3
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-DATABASE = "database.db"
+# Render safe database path
+DATABASE = "/tmp/jewellery.db"
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
-# Create table if not exists
+
+# Fresh table create every start (safe for free hosting)
 def init_db():
     conn = get_db_connection()
+    conn.execute("DROP TABLE IF EXISTS products")
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS products (
+        CREATE TABLE products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             price REAL NOT NULL,
@@ -26,6 +29,7 @@ def init_db():
     conn.close()
 
 init_db()
+
 
 # ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
@@ -64,8 +68,8 @@ def add_product():
 
     if request.method == "POST":
         name = request.form["name"]
-        price = request.form["price"]
-        stock = request.form["stock"]
+        price = float(request.form["price"])
+        stock = int(request.form["stock"])
 
         conn = get_db_connection()
         conn.execute(
