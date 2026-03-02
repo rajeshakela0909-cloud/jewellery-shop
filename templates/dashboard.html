@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card">
+    <h2>Dashboard</h2>
+
+    {% if products %}
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Stock</th>
+        </tr>
+
+        {% for product in products %}
+        <tr>
+            <td>{{ product.id }}</td>
+            <td>{{ product.name }}</td>
+            <td>₹ {{ product.price }}</td>
+            <td>{{ product.stock }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    {% else %}
+        <p>No products added yet.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
