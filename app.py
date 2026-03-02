@@ -1,62 +1,75 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import sqlite3
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-DATABASE = "/tmp/jewellery.db"
+DATABASE = "database.db"
 
+
+# ---------------- DATABASE CONNECTION ----------------
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
-# ----------- DATABASE INIT -----------
+
+# ---------------- CREATE TABLES ----------------
 def init_db():
     conn = get_db_connection()
 
-    # Reset tables (to avoid structure errors)
-    conn.execute("DROP TABLE IF EXISTS products")
-    conn.execute("DROP TABLE IF EXISTS sales")
-
     conn.execute("""
-        CREATE TABLE products (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            price REAL NOT NULL,
-            stock INTEGER NOT NULL
-        )
+    CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        price REAL NOT NULL,
+        stock INTEGER NOT NULL
+    )
     """)
 
     conn.execute("""
-        CREATE TABLE sales (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id INTEGER,
-            customer_name TEXT,
-            quantity INTEGER,
-            total_price REAL,
-            date TEXT
-        )
+    CREATE TABLE IF NOT EXISTS sales (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER,
+        customer_name TEXT,
+        quantity INTEGER,
+        total_price REAL,
+        date TEXT
+    )
     """)
 
     conn.commit()
     conn.close()
 
+
 init_db()
 
-# ----------- LOGIN -----------
+
+# ---------------- LOGIN ----------------
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if request.form["username"] == "admin" and request.form["password"] == "admin123":
-            session["user"] = "admin"
+        username = request.form["username"]
+        password = request.form["password"]
+
+        if username == "admin" and password == "admin":
+            session["user"] = username
             return redirect(url_for("dashboard"))
         else:
             return "Invalid Login"
+
     return render_template("login.html")
 
-# ----------- DASHBOARD -----------
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    return redirect(url_for("login"))
+
+
+# ---------------- DASHBOARD ----------------
 @app.route("/dashboard")
 def dashboard():
     if "user" not in session:
@@ -68,7 +81,8 @@ def dashboard():
 
     return render_template("dashboard.html", products=products)
 
-# ----------- ADD PRODUCT -----------
+
+# ---------------- ADD PRODUCT ----------------
 @app.route("/add", methods=["GET", "POST"])
 def add_product():
     if "user" not in session:
@@ -80,8 +94,10 @@ def add_product():
         stock = int(request.form["stock"])
 
         conn = get_db_connection()
-        conn.execute("INSERT INTO products (name, price, stock) VALUES (?, ?, ?)",
-                     (name, price, stock))
+        conn.execute(
+            "INSERT INTO products (name, price, stock) VALUES (?, ?, ?)",
+            (name, price, stock),
+        )
         conn.commit()
         conn.close()
 
@@ -89,7 +105,49 @@ def add_product():
 
     return render_template("add_product.html")
 
-# ----------- SALE -----------
+
+# ---------------- EDIT PRODUCT ----------------
+@app.route("/edit/<int:id>", methods=["GET", "POST"])
+def edit_product(id):
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    product = conn.execute("SELECT * FROM products WHERE id=?", (id,)).fetchone()
+
+    if request.method == "POST":
+        name = request.form["name"]
+        price = float(request.form["price"])
+        stock = int(request.form["stock"])
+
+        conn.execute(
+            "UPDATE products SET name=?, price=?, stock=? WHERE id=?",
+            (name, price, stock, id),
+        )
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("dashboard"))
+
+    conn.close()
+    return render_template("edit_product.html", product=product)
+
+
+# ---------------- DELETE PRODUCT ----------------
+@app.route("/delete/<int:id>")
+def delete_product(id):
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    conn.execute("DELETE FROM products WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("dashboard"))
+
+
+# ---------------- SALE ----------------
 @app.route("/sale/<int:id>", methods=["GET", "POST"])
 def sale(id):
     if "user" not in session:
@@ -118,21 +176,42 @@ def sale(id):
               datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
         conn.commit()
+
+        sale_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.close()
 
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("bill", sale_id=sale_id))
 
     conn.close()
     return render_template("sale.html", product=product)
 
-# ----------- SALES HISTORY -----------
-@app.route("/sales")
-def sales():
+
+# ---------------- BILL ----------------
+@app.route("/bill/<int:sale_id>")
+def bill(sale_id):
     if "user" not in session:
         return redirect(url_for("login"))
 
     conn = get_db_connection()
-    sales_data = conn.execute("""
+    sale = conn.execute("""
+        SELECT sales.*, products.name
+        FROM sales
+        JOIN products ON sales.product_id = products.id
+        WHERE sales.id=?
+    """, (sale_id,)).fetchone()
+    conn.close()
+
+    return render_template("bill.html", sale=sale)
+
+
+# ---------------- SALES HISTORY ----------------
+@app.route("/sales")
+def sales_history():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+    sales = conn.execute("""
         SELECT sales.*, products.name
         FROM sales
         JOIN products ON sales.product_id = products.id
@@ -140,22 +219,10 @@ def sales():
     """).fetchall()
     conn.close()
 
-    return render_template("sales.html", sales=sales_data)
+    return render_template("salesh.html", sales=sales)
 
-# ----------- DELETE PRODUCT -----------
-@app.route("/delete/<int:id>")
-def delete_product(id):
-    conn = get_db_connection()
-    conn.execute("DELETE FROM products WHERE id=?", (id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for("dashboard"))
 
-# ----------- LOGOUT -----------
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("login"))
-
+# ---------------- RUN ----------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
