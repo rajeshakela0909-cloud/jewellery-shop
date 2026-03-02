@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bill</title>
+    <style>
+        body {
+            font-family: Arial;
+            width: 400px;
+            margin: auto;
+        }
+        .bill-box {
+            border: 1px solid #000;
+            padding: 20px;
+        }
+        button {
+            margin-top: 15px;
+            padding: 8px 15px;
+        }
+        @media print {
+            button {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bill-box">
+    <h2 style="text-align:center;">Jewellery Shop</h2>
+    <hr>
+
+    <p><b>Customer:</b> {{ sale.customer_name }}</p>
+    <p><b>Date:</b> {{ sale.date }}</p>
+    <hr>
+
+    <p><b>Product:</b> {{ sale.name }}</p>
+    <p><b>Quantity:</b> {{ sale.quantity }}</p>
+    <p><b>Total Amount:</b> ₹ {{ sale.total_price }}</p>
+
+    <hr>
+    <p style="text-align:center;">Thank You Visit Again</p>
+</div>
+
+<div style="text-align:center;">
+    <button onclick="window.print()">Print Bill</button>
+</div>
+
+</body>
+</html>
