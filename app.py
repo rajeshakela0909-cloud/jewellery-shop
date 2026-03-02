@@ -1,137 +1,132 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
 import os
-from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+# DATABASE
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# ---------------- MODELS ---------------- #
-
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
+# ================= MODELS =================
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
+    code = db.Column(db.String(20), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
     price = db.Column(db.Float, nullable=False)
     stock = db.Column(db.Integer, nullable=False)
 
-class Sale(db.Model):
+class Customer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    product_name = db.Column(db.String(200))
-    quantity = db.Column(db.Integer)
-    total_price = db.Column(db.Float)
-    date = db.Column(db.DateTime, default=datetime.utcnow)
+    name = db.Column(db.String(100), nullable=False)
+    mobile = db.Column(db.String(15), nullable=False)
 
-# ---------------- INIT DB + DEFAULT ADMIN ---------------- #
+# ================= LOGIN =================
 
-with app.app_context():
-    db.create_all()
-    admin = User.query.filter_by(username="admin").first()
-    if not admin:
-        new_admin = User(
-            username="admin",
-            password=generate_password_hash("admin123")
-        )
-        db.session.add(new_admin)
-        db.session.commit()
-
-# ---------------- ROUTES ---------------- #
-
-@app.route("/")
-def home():
-    return redirect(url_for("login"))
-
-@app.route("/login", methods=["GET", "POST"])
+@app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
 
-        user = User.query.filter_by(username=username).first()
-
-        if user and check_password_hash(user.password, password):
-            session["user"] = user.username
-            return redirect(url_for("dashboard"))
+        if username == "admin" and password == "admin123":
+            session["user"] = username
+            return redirect("/dashboard")
         else:
             return "Invalid Login"
 
     return render_template("login.html")
 
+# ================= DASHBOARD =================
+
 @app.route("/dashboard")
 def dashboard():
     if "user" not in session:
-        return redirect(url_for("login"))
+        return redirect("/")
 
     products = Product.query.all()
-    return render_template("dashboard.html", products=products)
+    customers = Customer.query.all()
+    return render_template("dashboard.html", products=products, customers=customers)
+
+# ================= ADD PRODUCT =================
 
 @app.route("/add_product", methods=["GET", "POST"])
 def add_product():
-    if "user" not in session:
-        return redirect(url_for("login"))
-
     if request.method == "POST":
+        code = request.form["code"]
         name = request.form["name"]
         price = float(request.form["price"])
         stock = int(request.form["stock"])
 
-        new_product = Product(name=name, price=price, stock=stock)
-        db.session.add(new_product)
+        product = Product(code=code, name=name, price=price, stock=stock)
+        db.session.add(product)
         db.session.commit()
 
-        return redirect(url_for("dashboard"))
+        return redirect("/dashboard")
 
     return render_template("add_product.html")
 
-@app.route("/delete/<int:id>")
-def delete_product(id):
-    product = Product.query.get_or_404(id)
-    db.session.delete(product)
-    db.session.commit()
-    return redirect(url_for("dashboard"))
+# ================= SEARCH PRODUCT BY CODE =================
 
-@app.route("/make_sale/<int:id>", methods=["POST"])
-def make_sale(id):
-    product = Product.query.get_or_404(id)
-    quantity = int(request.form["quantity"])
+@app.route("/search", methods=["POST"])
+def search():
+    code = request.form["code"]
+    product = Product.query.filter_by(code=code).first()
+    products = [product] if product else []
+    customers = Customer.query.all()
+    return render_template("dashboard.html", products=products, customers=customers)
 
-    if quantity <= product.stock:
-        total = quantity * product.price
-        product.stock -= quantity
+# ================= SELL PRODUCT =================
 
-        new_sale = Sale(
-            product_name=product.name,
-            quantity=quantity,
-            total_price=total
-        )
+@app.route("/sell/<int:id>", methods=["POST"])
+def sell(id):
+    product = Product.query.get(id)
+    qty = int(request.form["qty"])
 
-        db.session.add(new_sale)
+    if product and product.stock >= qty:
+        product.stock -= qty
         db.session.commit()
 
-    return redirect(url_for("dashboard"))
+    return redirect("/dashboard")
 
-@app.route("/sales")
-def sales():
-    if "user" not in session:
-        return redirect(url_for("login"))
+# ================= DELETE PRODUCT =================
 
-    sales = Sale.query.all()
-    return render_template("sales.html", sales=sales)
+@app.route("/delete/<int:id>")
+def delete(id):
+    product = Product.query.get(id)
+    if product:
+        db.session.delete(product)
+        db.session.commit()
+    return redirect("/dashboard")
+
+# ================= ADD CUSTOMER =================
+
+@app.route("/add_customer", methods=["GET", "POST"])
+def add_customer():
+    if request.method == "POST":
+        name = request.form["name"]
+        mobile = request.form["mobile"]
+
+        customer = Customer(name=name, mobile=mobile)
+        db.session.add(customer)
+        db.session.commit()
+
+        return redirect("/dashboard")
+
+    return render_template("add_customer.html")
+
+# ================= LOGOUT =================
 
 @app.route("/logout")
 def logout():
     session.pop("user", None)
-    return redirect(url_for("login"))
+    return redirect("/")
+
+# ================= RUN =================
 
 if __name__ == "__main__":
     app.run(debug=True)
