@@ -6,7 +6,8 @@ import os
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-DATABASE = "database.db"
+# Render compatible database location
+DATABASE = "/tmp/database.db"
 
 
 # ---------------- DATABASE CONNECTION ----------------
@@ -16,49 +17,51 @@ def get_db_connection():
     return conn
 
 
-# ---------------- CREATE TABLES ----------------
+# ---------------- INIT DATABASE ----------------
 def init_db():
     conn = get_db_connection()
 
+    # Drop old tables (important for structure reset)
+    conn.execute("DROP TABLE IF EXISTS products")
+    conn.execute("DROP TABLE IF EXISTS sales")
+
     conn.execute("""
-    CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        price REAL NOT NULL,
-        stock INTEGER NOT NULL
-    )
+        CREATE TABLE products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            price REAL NOT NULL,
+            stock INTEGER NOT NULL
+        )
     """)
 
     conn.execute("""
-    CREATE TABLE IF NOT EXISTS sales (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        product_id INTEGER,
-        customer_name TEXT,
-        quantity INTEGER,
-        total_price REAL,
-        date TEXT
-    )
+        CREATE TABLE sales (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER,
+            customer_name TEXT,
+            quantity INTEGER,
+            total_price REAL,
+            date TEXT
+        )
     """)
 
     conn.commit()
     conn.close()
 
 
-init_db()
+# Run DB init once at startup
+if not os.path.exists(DATABASE):
+    init_db()
 
 
 # ---------------- LOGIN ----------------
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        if username == "admin" and password == "admin":
-            session["user"] = username
+        if request.form["username"] == "admin" and request.form["password"] == "admin":
+            session["user"] = "admin"
             return redirect(url_for("dashboard"))
-        else:
-            return "Invalid Login"
+        return "Invalid Login"
 
     return render_template("login.html")
 
@@ -96,7 +99,7 @@ def add_product():
         conn = get_db_connection()
         conn.execute(
             "INSERT INTO products (name, price, stock) VALUES (?, ?, ?)",
-            (name, price, stock),
+            (name, price, stock)
         )
         conn.commit()
         conn.close()
@@ -116,17 +119,17 @@ def edit_product(id):
     product = conn.execute("SELECT * FROM products WHERE id=?", (id,)).fetchone()
 
     if request.method == "POST":
-        name = request.form["name"]
-        price = float(request.form["price"])
-        stock = int(request.form["stock"])
-
         conn.execute(
             "UPDATE products SET name=?, price=?, stock=? WHERE id=?",
-            (name, price, stock, id),
+            (
+                request.form["name"],
+                float(request.form["price"]),
+                int(request.form["stock"]),
+                id
+            )
         )
         conn.commit()
         conn.close()
-
         return redirect(url_for("dashboard"))
 
     conn.close()
@@ -157,8 +160,8 @@ def sale(id):
     product = conn.execute("SELECT * FROM products WHERE id=?", (id,)).fetchone()
 
     if request.method == "POST":
-        customer = request.form["customer"]
         quantity = int(request.form["quantity"])
+        customer = request.form["customer"]
 
         if quantity > product["stock"]:
             conn.close()
@@ -172,11 +175,15 @@ def sale(id):
         conn.execute("""
             INSERT INTO sales (product_id, customer_name, quantity, total_price, date)
             VALUES (?, ?, ?, ?, ?)
-        """, (id, customer, quantity, total,
-              datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        """, (
+            id,
+            customer,
+            quantity,
+            total,
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ))
 
         conn.commit()
-
         sale_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.close()
 
