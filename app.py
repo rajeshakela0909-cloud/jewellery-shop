@@ -220,7 +220,7 @@ def sales_history():
     """).fetchall()
     conn.close()
 
-    return render_template("salesh.html", sales=sales)
+    return render_template("sales.html", sales=sales)
 
 
 # ---------------- MONTHLY REPORT ----------------
