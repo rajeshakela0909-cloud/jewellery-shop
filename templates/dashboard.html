@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dashboard</title>
+    <title>Jewellery Shop Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,7 +15,6 @@
             padding: 15px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
         }
 
         .navbar a {
@@ -33,68 +32,40 @@
         }
 
         .btn {
-            padding: 8px 12px;
+            padding: 6px 12px;
             border: none;
-            color: white;
             cursor: pointer;
             border-radius: 4px;
             text-decoration: none;
+            font-size: 14px;
         }
 
-        .btn-add {
-            background: green;
-        }
-
-        .btn-sale {
-            background: #2563eb;
-        }
-
-        .btn-edit {
-            background: orange;
-        }
-
-        .btn-delete {
-            background: red;
-        }
+        .btn-add { background: green; color: white; }
+        .btn-sale { background: blue; color: white; }
+        .btn-delete { background: red; color: white; }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
             background: white;
         }
 
-        th, td {
+        table th, table td {
             padding: 10px;
-            border-bottom: 1px solid #ddd;
+            border: 1px solid #ddd;
             text-align: center;
         }
 
-        th {
-            background: #e5e7eb;
+        table th {
+            background: #f1f1f1;
         }
 
-        .low-stock {
-            background-color: #ffe5e5;
-            color: red;
-            font-weight: bold;
+        form {
+            display: inline;
         }
 
-        .search-box {
-            margin-bottom: 15px;
-        }
-
-        input[type="text"] {
-            padding: 8px;
-            width: 250px;
-        }
-
-        button {
-            padding: 8px 12px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            cursor: pointer;
+        input[type="number"] {
+            width: 60px;
         }
     </style>
 </head>
@@ -103,9 +74,8 @@
 <div class="navbar">
     <div><strong>Jewellery Shop</strong></div>
     <div>
-        <a href="/sales">Sales History</a>
-        <a href="/monthly-report">Monthly Report</a>
-        <a href="/logout">Logout</a>
+        <a href="{{ url_for('sales') }}">Sales History</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
     </div>
 </div>
 
@@ -113,15 +83,11 @@
 
     <h2>Dashboard</h2>
 
-    <div class="search-box">
-        <form method="GET" action="/dashboard">
-            <input type="text" name="search" placeholder="Search product...">
-            <button type="submit">Search</button>
-            <a href="/dashboard">Clear</a>
-        </form>
-    </div>
+    <a href="{{ url_for('add_product') }}" class="btn btn-add">
+        + Add Product
+    </a>
 
-    <a href="/add" class="btn btn-add">+ Add Product</a>
+    <br><br>
 
     <table>
         <tr>
@@ -130,25 +96,27 @@
             <th>Price (₹)</th>
             <th>Stock</th>
             <th>Sale</th>
-            <th>Edit</th>
             <th>Delete</th>
         </tr>
 
         {% for product in products %}
-        <tr {% if product['stock'] < 5 %} class="low-stock" {% endif %}>
-            <td>{{ product['id'] }}</td>
-            <td>{{ product['name'] }}</td>
-            <td>₹ {{ product['price'] }}</td>
-            <td>{{ product['stock'] }}</td>
+        <tr>
+            <td>{{ product.id }}</td>
+            <td>{{ product.name }}</td>
+            <td>{{ product.price }}</td>
+            <td>{{ product.stock }}</td>
+
             <td>
-                <a href="/sale/{{ product['id'] }}" class="btn btn-sale">Make Sale</a>
+                <form action="{{ url_for('make_sale', id=product.id) }}" method="POST">
+                    <input type="number" name="quantity" min="1" required>
+                    <button type="submit" class="btn btn-sale">Sell</button>
+                </form>
             </td>
+
             <td>
-                <a href="/edit/{{ product['id'] }}" class="btn btn-edit">Edit</a>
-            </td>
-            <td>
-                <a href="/delete/{{ product['id'] }}" class="btn btn-delete"
-                   onclick="return confirm('Are you sure?')">Delete</a>
+                <a href="{{ url_for('delete_product', id=product.id) }}" class="btn btn-delete">
+                    Delete
+                </a>
             </td>
         </tr>
         {% endfor %}
