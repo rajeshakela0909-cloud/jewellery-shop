@@ -6,7 +6,6 @@ import os
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-# Render compatible database location
 DATABASE = "/tmp/database.db"
 
 
@@ -21,12 +20,8 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
 
-    # Drop old tables (important for structure reset)
-    conn.execute("DROP TABLE IF EXISTS products")
-    conn.execute("DROP TABLE IF EXISTS sales")
-
     conn.execute("""
-        CREATE TABLE products (
+        CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             price REAL NOT NULL,
@@ -35,7 +30,7 @@ def init_db():
     """)
 
     conn.execute("""
-        CREATE TABLE sales (
+        CREATE TABLE IF NOT EXISTS sales (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             product_id INTEGER,
             customer_name TEXT,
@@ -49,7 +44,6 @@ def init_db():
     conn.close()
 
 
-# Run DB init once at startup
 if not os.path.exists(DATABASE):
     init_db()
 
@@ -227,6 +221,42 @@ def sales_history():
     conn.close()
 
     return render_template("salesh.html", sales=sales)
+
+
+# ---------------- MONTHLY REPORT ----------------
+@app.route("/monthly-report")
+def monthly_report():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    conn = get_db_connection()
+
+    current_month = datetime.now().strftime("%Y-%m")
+
+    current_total = conn.execute("""
+        SELECT SUM(total_price) as total
+        FROM sales
+        WHERE strftime('%Y-%m', date) = ?
+    """, (current_month,)).fetchone()["total"]
+
+    if current_total is None:
+        current_total = 0
+
+    monthly_data = conn.execute("""
+        SELECT strftime('%Y-%m', date) as month,
+               SUM(total_price) as total
+        FROM sales
+        GROUP BY month
+        ORDER BY month DESC
+    """).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "monthly_report.html",
+        current_total=current_total,
+        monthly_data=monthly_data
+    )
 
 
 # ---------------- RUN ----------------
