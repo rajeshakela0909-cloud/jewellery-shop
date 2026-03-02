@@ -1,48 +1,105 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Bill</title>
+    <title>Invoice</title>
     <style>
         body {
-            font-family: Arial;
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+        }
+
+        .invoice-box {
             width: 400px;
-            margin: auto;
-        }
-        .bill-box {
-            border: 1px solid #000;
+            margin: 30px auto;
             padding: 20px;
+            border: 1px solid #000;
+            background: #fff;
         }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .shop-name {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .line {
+            border-top: 1px dashed #000;
+            margin: 10px 0;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
         button {
             margin-top: 15px;
             padding: 8px 15px;
+            cursor: pointer;
         }
+
         @media print {
             button {
                 display: none;
+            }
+            body {
+                background: white;
             }
         }
     </style>
 </head>
 <body>
 
-<div class="bill-box">
-    <h2 style="text-align:center;">Jewellery Shop</h2>
-    <hr>
+<div class="invoice-box">
+    <div class="shop-name">JEWELLERY SHOP</div>
+    <h2>INVOICE</h2>
 
-    <p><b>Customer:</b> {{ sale.customer_name }}</p>
-    <p><b>Date:</b> {{ sale.date }}</p>
-    <hr>
+    <div class="line"></div>
 
-    <p><b>Product:</b> {{ sale.name }}</p>
-    <p><b>Quantity:</b> {{ sale.quantity }}</p>
-    <p><b>Total Amount:</b> ₹ {{ sale.total_price }}</p>
+    <div class="row">
+        <span><b>Customer:</b></span>
+        <span>{{ sale.customer_name }}</span>
+    </div>
 
-    <hr>
-    <p style="text-align:center;">Thank You Visit Again</p>
+    <div class="row">
+        <span><b>Date:</b></span>
+        <span>{{ sale.date }}</span>
+    </div>
+
+    <div class="line"></div>
+
+    <div class="row">
+        <span><b>Product:</b></span>
+        <span>{{ sale.name }}</span>
+    </div>
+
+    <div class="row">
+        <span><b>Quantity:</b></span>
+        <span>{{ sale.quantity }}</span>
+    </div>
+
+    <div class="row">
+        <span><b>Total Amount:</b></span>
+        <span>₹ {{ sale.total_price }}</span>
+    </div>
+
+    <div class="line"></div>
+
+    <div style="text-align:center;">
+        Thank You! Visit Again 🙏
+    </div>
 </div>
 
 <div style="text-align:center;">
     <button onclick="window.print()">Print Bill</button>
+    <br><br>
+    <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
 </div>
 
 </body>
