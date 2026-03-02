@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Make Sale</h2>
+
+<p><b>Product:</b> {{ product.name }}</p>
+<p><b>Price:</b> ₹ {{ product.price }}</p>
+<p><b>Stock:</b> {{ product.stock }}</p>
+
+<form method="POST">
+    <label>Customer Name</label>
+    <input type="text" name="customer" required>
+
+    <label>Quantity</label>
+    <input type="number" name="quantity" required>
+
+    <button type="submit">Complete Sale</button>
+</form>
+
+{% endblock %}
