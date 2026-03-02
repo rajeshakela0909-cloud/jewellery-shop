@@ -12,11 +12,16 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+# ----------- DATABASE INIT -----------
 def init_db():
     conn = get_db_connection()
 
+    # Reset tables (to avoid structure errors)
+    conn.execute("DROP TABLE IF EXISTS products")
+    conn.execute("DROP TABLE IF EXISTS sales")
+
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS products (
+        CREATE TABLE products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             price REAL NOT NULL,
@@ -25,7 +30,7 @@ def init_db():
     """)
 
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS sales (
+        CREATE TABLE sales (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             product_id INTEGER,
             customer_name TEXT,
@@ -40,7 +45,7 @@ def init_db():
 
 init_db()
 
-# ---------------- LOGIN ----------------
+# ----------- LOGIN -----------
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -51,7 +56,7 @@ def login():
             return "Invalid Login"
     return render_template("login.html")
 
-# ---------------- DASHBOARD ----------------
+# ----------- DASHBOARD -----------
 @app.route("/dashboard")
 def dashboard():
     if "user" not in session:
@@ -63,7 +68,7 @@ def dashboard():
 
     return render_template("dashboard.html", products=products)
 
-# ---------------- ADD PRODUCT ----------------
+# ----------- ADD PRODUCT -----------
 @app.route("/add", methods=["GET", "POST"])
 def add_product():
     if "user" not in session:
@@ -84,7 +89,7 @@ def add_product():
 
     return render_template("add_product.html")
 
-# ---------------- SALE ----------------
+# ----------- SALE -----------
 @app.route("/sale/<int:id>", methods=["GET", "POST"])
 def sale(id):
     if "user" not in session:
@@ -98,6 +103,7 @@ def sale(id):
         quantity = int(request.form["quantity"])
 
         if quantity > product["stock"]:
+            conn.close()
             return "Not enough stock"
 
         total = product["price"] * quantity
@@ -108,7 +114,8 @@ def sale(id):
         conn.execute("""
             INSERT INTO sales (product_id, customer_name, quantity, total_price, date)
             VALUES (?, ?, ?, ?, ?)
-        """, (id, customer, quantity, total, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        """, (id, customer, quantity, total,
+              datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
         conn.commit()
         conn.close()
@@ -118,24 +125,24 @@ def sale(id):
     conn.close()
     return render_template("sale.html", product=product)
 
-# ---------------- SALES HISTORY ----------------
+# ----------- SALES HISTORY -----------
 @app.route("/sales")
 def sales():
     if "user" not in session:
         return redirect(url_for("login"))
 
     conn = get_db_connection()
-    sales = conn.execute("""
-        SELECT sales.*, products.name 
-        FROM sales 
+    sales_data = conn.execute("""
+        SELECT sales.*, products.name
+        FROM sales
         JOIN products ON sales.product_id = products.id
         ORDER BY sales.id DESC
     """).fetchall()
     conn.close()
 
-    return render_template("sales.html", sales=sales)
+    return render_template("sales.html", sales=sales_data)
 
-# ---------------- DELETE ----------------
+# ----------- DELETE PRODUCT -----------
 @app.route("/delete/<int:id>")
 def delete_product(id):
     conn = get_db_connection()
@@ -144,7 +151,7 @@ def delete_product(id):
     conn.close()
     return redirect(url_for("dashboard"))
 
-# ---------------- LOGOUT ----------------
+# ----------- LOGOUT -----------
 @app.route("/logout")
 def logout():
     session.clear()
