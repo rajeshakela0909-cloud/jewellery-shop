@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import sqlite3
-import os
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -28,7 +27,7 @@ def init_db():
 
 init_db()
 
-# Login
+# ================= LOGIN =================
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -44,7 +43,7 @@ def login():
     return render_template("login.html")
 
 
-# Dashboard
+# ================= DASHBOARD =================
 @app.route("/dashboard")
 def dashboard():
     if "user" not in session:
@@ -57,7 +56,31 @@ def dashboard():
     return render_template("dashboard.html", products=products)
 
 
-# Logout
+# ================= ADD PRODUCT =================
+@app.route("/add", methods=["GET", "POST"])
+def add_product():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        name = request.form["name"]
+        price = request.form["price"]
+        stock = request.form["stock"]
+
+        conn = get_db_connection()
+        conn.execute(
+            "INSERT INTO products (name, price, stock) VALUES (?, ?, ?)",
+            (name, price, stock),
+        )
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("dashboard"))
+
+    return render_template("add_product.html")
+
+
+# ================= LOGOUT =================
 @app.route("/logout")
 def logout():
     session.clear()
