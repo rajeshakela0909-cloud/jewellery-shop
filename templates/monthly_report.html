@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Monthly Report</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+        }
+        h2 {
+            margin-bottom: 10px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 400px;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background: #f2f2f2;
+        }
+        .box {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #000;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>📊 Monthly Sales Report</h2>
+
+<div class="box">
+    <b>Current Month Total Sale:</b><br><br>
+    ₹ {{ current_total }}
+</div>
+
+<h3>Month Wise Sale</h3>
+
+<table>
+    <tr>
+        <th>Month</th>
+        <th>Total Sale (₹)</th>
+    </tr>
+    {% for row in monthly_data %}
+    <tr>
+        <td>{{ row.month }}</td>
+        <td>{{ row.total }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<br>
+<a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+
+</body>
+</html>
