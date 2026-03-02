@@ -9,14 +9,14 @@ app.secret_key = "supersecretkey"
 DATABASE = "/tmp/database.db"
 
 
-# ---------------- DATABASE CONNECTION ----------------
+# ---------- DATABASE CONNECTION ----------
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
 
-# ---------------- INIT DATABASE ----------------
+# ---------- INIT DATABASE ----------
 def init_db():
     conn = get_db_connection()
 
@@ -48,11 +48,11 @@ if not os.path.exists(DATABASE):
     init_db()
 
 
-# ---------------- LOGIN ----------------
+# ---------- LOGIN ----------
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if request.form["username"] == "admin" and request.form["password"] == "admin":
+        if request.form["username"] == "admin" and request.form["password"] == "Uttam@123":
             session["user"] = "admin"
             return redirect(url_for("dashboard"))
         return "Invalid Login"
@@ -66,20 +66,30 @@ def logout():
     return redirect(url_for("login"))
 
 
-# ---------------- DASHBOARD ----------------
+# ---------- DASHBOARD WITH SEARCH ----------
 @app.route("/dashboard")
 def dashboard():
     if "user" not in session:
         return redirect(url_for("login"))
 
+    search = request.args.get("search")
+
     conn = get_db_connection()
-    products = conn.execute("SELECT * FROM products").fetchall()
+
+    if search:
+        products = conn.execute(
+            "SELECT * FROM products WHERE name LIKE ?",
+            ('%' + search + '%',)
+        ).fetchall()
+    else:
+        products = conn.execute("SELECT * FROM products").fetchall()
+
     conn.close()
 
     return render_template("dashboard.html", products=products)
 
 
-# ---------------- ADD PRODUCT ----------------
+# ---------- ADD PRODUCT ----------
 @app.route("/add", methods=["GET", "POST"])
 def add_product():
     if "user" not in session:
@@ -103,7 +113,7 @@ def add_product():
     return render_template("add_product.html")
 
 
-# ---------------- EDIT PRODUCT ----------------
+# ---------- EDIT PRODUCT ----------
 @app.route("/edit/<int:id>", methods=["GET", "POST"])
 def edit_product(id):
     if "user" not in session:
@@ -130,7 +140,7 @@ def edit_product(id):
     return render_template("edit_product.html", product=product)
 
 
-# ---------------- DELETE PRODUCT ----------------
+# ---------- DELETE PRODUCT ----------
 @app.route("/delete/<int:id>")
 def delete_product(id):
     if "user" not in session:
@@ -144,7 +154,7 @@ def delete_product(id):
     return redirect(url_for("dashboard"))
 
 
-# ---------------- SALE ----------------
+# ---------- MAKE SALE ----------
 @app.route("/sale/<int:id>", methods=["GET", "POST"])
 def sale(id):
     if "user" not in session:
@@ -187,7 +197,7 @@ def sale(id):
     return render_template("sale.html", product=product)
 
 
-# ---------------- BILL ----------------
+# ---------- BILL ----------
 @app.route("/bill/<int:sale_id>")
 def bill(sale_id):
     if "user" not in session:
@@ -205,7 +215,7 @@ def bill(sale_id):
     return render_template("bill.html", sale=sale)
 
 
-# ---------------- SALES HISTORY ----------------
+# ---------- SALES HISTORY ----------
 @app.route("/sales")
 def sales_history():
     if "user" not in session:
@@ -223,7 +233,7 @@ def sales_history():
     return render_template("sales.html", sales=sales)
 
 
-# ---------------- MONTHLY REPORT ----------------
+# ---------- MONTHLY REPORT ----------
 @app.route("/monthly-report")
 def monthly_report():
     if "user" not in session:
@@ -259,7 +269,7 @@ def monthly_report():
     )
 
 
-# ---------------- RUN ----------------
+# ---------- RUN ----------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
