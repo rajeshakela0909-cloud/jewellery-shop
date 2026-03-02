@@ -1,32 +1,142 @@
-{% extends "base.html" %}
-{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+        }
 
-<h2>Dashboard</h2>
+        .navbar {
+            background: #1f2937;
+            padding: 15px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+        }
 
-<a href="/add">+ Add Product</a> |
-<a href="/sales">Sales History</a>
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            margin-left: 15px;
+        }
 
-<table border="1" width="100%" cellpadding="8">
-<tr>
-    <th>ID</th>
-    <th>Name</th>
-    <th>Price</th>
-    <th>Stock</th>
-    <th>Action</th>
-</tr>
+        .container {
+            padding: 20px;
+        }
 
-{% for product in products %}
-<tr>
-    <td>{{ product.id }}</td>
-    <td>{{ product.name }}</td>
-    <td>₹ {{ product.price }}</td>
-    <td>{{ product.stock }}</td>
-    <td>
-        <a href="/sale/{{ product.id }}">Sale</a> |
-        <a href="/delete/{{ product.id }}">Delete</a>
-    </td>
-</tr>
-{% endfor %}
-</table>
+        h2 {
+            margin-bottom: 10px;
+        }
 
-{% endblock %}
+        .btn {
+            padding: 6px 12px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .btn-add {
+            background: green;
+            color: white;
+        }
+
+        .btn-sale {
+            background: blue;
+            color: white;
+        }
+
+        .btn-edit {
+            background: orange;
+            color: white;
+        }
+
+        .btn-delete {
+            background: red;
+            color: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #e5e7eb;
+        }
+
+        .top-buttons {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <div><b>Jewellery Shop</b></div>
+    <div>
+        <a href="{{ url_for('sales_history') }}">Sales History</a>
+        <a href="{{ url_for('monthly_report') }}">Monthly Report</a>
+        <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+</div>
+
+<div class="container">
+
+    <h2>Dashboard</h2>
+
+    <div class="top-buttons">
+        <a href="{{ url_for('add_product') }}" class="btn btn-add">+ Add Product</a>
+    </div>
+
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Price (₹)</th>
+            <th>Stock</th>
+            <th>Sale</th>
+            <th>Edit</th>
+            <th>Delete</th>
+        </tr>
+
+        {% for product in products %}
+        <tr>
+            <td>{{ product.id }}</td>
+            <td>{{ product.name }}</td>
+            <td>₹ {{ product.price }}</td>
+            <td>{{ product.stock }}</td>
+            <td>
+                <a href="{{ url_for('sale', id=product.id) }}" class="btn btn-sale">
+                    Make Sale
+                </a>
+            </td>
+            <td>
+                <a href="{{ url_for('edit_product', id=product.id) }}" class="btn btn-edit">
+                    Edit
+                </a>
+            </td>
+            <td>
+                <a href="{{ url_for('delete_product', id=product.id) }}"
+                   onclick="return confirm('Are you sure?')"
+                   class="btn btn-delete">
+                    Delete
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+</div>
+
+</body>
+</html>
