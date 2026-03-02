@@ -1,17 +1,23 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, session
 from flask_sqlalchemy import SQLAlchemy
 import os
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-# DATABASE
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# ===== DATABASE CONFIG =====
+database_url = os.environ.get("DATABASE_URL")
+
+if database_url:
+    # Render postgres URL fix
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
-# ================= MODELS =================
+# ===== MODELS =====
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -25,7 +31,11 @@ class Customer(db.Model):
     name = db.Column(db.String(100), nullable=False)
     mobile = db.Column(db.String(15), nullable=False)
 
-# ================= LOGIN =================
+# ===== CREATE TABLES =====
+with app.app_context():
+    db.create_all()
+
+# ===== LOGIN =====
 
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -41,7 +51,7 @@ def login():
 
     return render_template("login.html")
 
-# ================= DASHBOARD =================
+# ===== DASHBOARD =====
 
 @app.route("/dashboard")
 def dashboard():
@@ -52,7 +62,7 @@ def dashboard():
     customers = Customer.query.all()
     return render_template("dashboard.html", products=products, customers=customers)
 
-# ================= ADD PRODUCT =================
+# ===== ADD PRODUCT =====
 
 @app.route("/add_product", methods=["GET", "POST"])
 def add_product():
@@ -70,17 +80,22 @@ def add_product():
 
     return render_template("add_product.html")
 
-# ================= SEARCH PRODUCT BY CODE =================
+# ===== SEARCH PRODUCT =====
 
 @app.route("/search", methods=["POST"])
 def search():
     code = request.form["code"]
     product = Product.query.filter_by(code=code).first()
-    products = [product] if product else []
+
+    if product:
+        products = [product]
+    else:
+        products = []
+
     customers = Customer.query.all()
     return render_template("dashboard.html", products=products, customers=customers)
 
-# ================= SELL PRODUCT =================
+# ===== SELL PRODUCT =====
 
 @app.route("/sell/<int:id>", methods=["POST"])
 def sell(id):
@@ -93,7 +108,7 @@ def sell(id):
 
     return redirect("/dashboard")
 
-# ================= DELETE PRODUCT =================
+# ===== DELETE PRODUCT =====
 
 @app.route("/delete/<int:id>")
 def delete(id):
@@ -103,7 +118,7 @@ def delete(id):
         db.session.commit()
     return redirect("/dashboard")
 
-# ================= ADD CUSTOMER =================
+# ===== ADD CUSTOMER =====
 
 @app.route("/add_customer", methods=["GET", "POST"])
 def add_customer():
@@ -119,14 +134,14 @@ def add_customer():
 
     return render_template("add_customer.html")
 
-# ================= LOGOUT =================
+# ===== LOGOUT =====
 
 @app.route("/logout")
 def logout():
     session.pop("user", None)
     return redirect("/")
 
-# ================= RUN =================
+# ===== RUN LOCAL =====
 
 if __name__ == "__main__":
     app.run(debug=True)
